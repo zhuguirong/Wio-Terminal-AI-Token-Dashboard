@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wio Terminal AI Quota Dashboard Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: #101820;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(41, 78, 97, 0.22), transparent 34%),
+        #101820;
+    }
+
+    .stage {
+      display: grid;
+      gap: 14px;
+      justify-items: center;
+      width: 320px;
+    }
+
+    .screen {
+      width: 320px;
+      height: 240px;
+      position: relative;
+      overflow: hidden;
+      contain: layout paint;
+      background:
+        linear-gradient(180deg, rgba(18, 38, 48, 0.55) 0%, rgba(0, 4, 8, 0.08) 58%),
+        #000408;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .screen::before {
+      content: "";
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      top: 112px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(139, 179, 207, 0.34), transparent);
+    }
+
+    .screen::after {
+      content: "";
+      position: absolute;
+      left: 144px;
+      top: 22px;
+      bottom: 35px;
+      width: 1px;
+      background: linear-gradient(180deg, transparent, rgba(139, 179, 207, 0.26), transparent);
+    }
+
+    .row {
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      height: 88px;
+    }
+
+    .row.claude { top: 16px; --accent: #ff7a4f; --soft: #ffb15d; --glow: rgba(255, 74, 43, 0.58); }
+    .row.codex { top: 116px; --accent: #00d7ff; --soft: #48f0ff; --glow: rgba(0, 119, 255, 0.7); }
+
+    .brand {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 116px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: #e4efff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .icon {
+      width: 17px;
+      height: 17px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .codex .icon {
+      filter: brightness(0) saturate(100%) invert(80%) sepia(85%) saturate(2679%) hue-rotate(139deg) brightness(103%) contrast(103%);
+    }
+
+    .percent {
+      position: absolute;
+      left: 0;
+      top: 23px;
+      width: 116px;
+      color: var(--accent);
+      font-size: 42px;
+      line-height: 0.9;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-align: center;
+      text-shadow: 0 0 10px var(--glow);
+    }
+
+    .percent small {
+      font-size: 17px;
+      margin-left: 1px;
+    }
+
+    .remain {
+      position: absolute;
+      left: 0;
+      top: 70px;
+      width: 116px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .metrics {
+      position: absolute;
+      left: 132px;
+      top: 13px;
+      width: 144px;
+      color: #e4efff;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .metric + .metric { margin-top: 10px; }
+
+    .line {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 5px;
+      white-space: nowrap;
+    }
+
+    .line span:first-child {
+      color: var(--soft);
+    }
+
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      background: #142330;
+      border: 1px solid #29445b;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .fill {
+      width: var(--pct);
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--soft));
+      box-shadow: 0 5px 9px var(--glow);
+    }
+
+    .footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 28px;
+      display: grid;
+      grid-template-columns: 118px 100px 76px;
+      align-items: center;
+      justify-content: center;
+      border-top: 1px solid rgba(139, 179, 207, 0.24);
+      background: linear-gradient(180deg, rgba(9, 20, 27, 0.1), rgba(0, 9, 14, 0.86));
+      text-align: center;
+      color: #e4efff;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .footer span + span {
+      min-width: 0;
+      padding-left: 0;
+      border-left: 1px solid rgba(139, 179, 207, 0.28);
+      overflow: visible;
+      white-space: nowrap;
+    }
+
+    .controls {
+      width: 320px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: #9fb9ce;
+      font-size: 12px;
+    }
+
+    .controls button {
+      height: 28px;
+      border: 1px solid rgba(139, 179, 207, 0.32);
+      border-radius: 8px;
+      background: #132331;
+      color: #e4efff;
+      font: inherit;
+      font-weight: 700;
+      padding: 0 10px;
+      cursor: pointer;
+    }
+
+    .controls button:disabled {
+      cursor: not-allowed;
+      opacity: 0.46;
+    }
+
+    .status {
+      flex: 1 1 100%;
+      min-width: 0;
+      height: 16px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .debug-panel {
+      width: 320px;
+      height: 148px;
+      overflow: auto;
+      box-sizing: border-box;
+      padding: 8px;
+      border: 1px solid rgba(139, 179, 207, 0.22);
+      border-radius: 8px;
+      background: rgba(0, 8, 13, 0.72);
+      color: #b7d3e8;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 11px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      contain: layout paint;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="stage">
+  <main class="screen" aria-label="Wio Terminal 320 by 240 dashboard preview">
+    <section class="row claude">
+      <div class="brand">
+        <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Claude_AI_symbol.svg" alt="" decoding="async" />
+        Claude
+      </div>
+      <div class="percent"><span data-field="claude.remaining">--</span><small>%</small></div>
+      <div class="remain">remain</div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="line"><span data-field="claude.short.label">--</span><span>reset <b data-field="claude.short.reset">--:--</b></span></div>
+          <div class="bar"><div class="fill" data-bar="claude.short.pct" style="--pct:0%"></div></div>
+        </div>
+        <div class="metric">
+          <div class="line"><span data-field="claude.week.label">--</span><span data-field="claude.week.reset">--</span></div>
+          <div class="bar"><div class="fill" data-bar="claude.week.pct" style="--pct:0%"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="row codex">
+      <div class="brand">
+        <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/6/66/OpenAI_logo_2025_%28symbol%29.svg" alt="" decoding="async" />
+        Codex
+      </div>
+      <div class="percent"><span data-field="codex.remaining">--</span><small>%</small></div>
+      <div class="remain">remain</div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="line"><span data-field="codex.short.label">--</span><span>reset <b data-field="codex.short.reset">--:--</b></span></div>
+          <div class="bar"><div class="fill" data-bar="codex.short.pct" style="--pct:0%"></div></div>
+        </div>
+        <div class="metric">
+          <div class="line"><span data-field="codex.week.label">--</span><span data-field="codex.week.reset">--</span></div>
+          <div class="bar"><div class="fill" data-bar="codex.week.pct" style="--pct:0%"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer"><span>Today <b data-field="footer.cost">--</b></span><span data-field="footer.tokens">--</span><span data-field="footer.time">--:--</span></footer>
+  </main>
+  <div class="controls">
+    <button type="button" data-action="connect">Connect Wio</button>
+    <button type="button" data-action="scan-any">Scan Any</button>
+    <button type="button" data-action="diag">Diag</button>
+    <button type="button" data-action="sync" disabled>Sync</button>
+    <span class="status" data-status>waiting for server</span>
+  </div>
+  <pre class="debug-panel" data-debug-log>debug log ready</pre>
+  </div>
+
+  <script>
+    const API_URL = "/api/quota";
+    const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+    const RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+    const TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+    const state = { quota: null, quotaHash: "", characteristic: null, txCharacteristic: null, connected: false, device: null };
+    const statusEl = document.querySelector("[data-status]");
+    const debugEl = document.querySelector("[data-debug-log]");
+    const connectButton = document.querySelector('[data-action="connect"]');
+    const scanAnyButton = document.querySelector('[data-action="scan-any"]');
+    const diagButton = document.querySelector('[data-action="diag"]');
+    const syncButton = document.querySelector('[data-action="sync"]');
+
+    function logDebug(message, detail) {
+      const time = new Date().toLocaleTimeString();
+      const suffix = detail === undefined ? "" : ` ${typeof detail === "string" ? detail : JSON.stringify(detail)}`;
+      const line = `[${time}] ${message}${suffix}`;
+      debugEl.textContent = `${line}\n${debugEl.textContent}`.slice(0, 6000);
+      console.log(line);
+    }
+
+    function getPath(source, path) {
+      return path.split(".").reduce((value, key) => value?.[key], source);
+    }
+
+    function normalizeQuota(raw) {
+      const platforms = raw.platforms || {};
+      return {
+        updatedAt: String(raw.updatedAt || raw.footer?.time || ""),
+        footer: {
+          cost: String(raw.footer?.cost ?? "--"),
+          tokens: String(raw.footer?.tokens ?? "--"),
+          time: String(raw.footer?.time ?? raw.updatedAt ?? "--:--")
+        },
+        platforms: {
+          claude: normalizePlatform(platforms.claude),
+          codex: normalizePlatform(platforms.codex)
+        }
+      };
+    }
+
+    function normalizePlatform(platform = {}) {
+      return {
+        remaining: clampPercent(platform.remaining),
+        short: normalizeWindow(platform.short),
+        week: normalizeWindow(platform.week)
+      };
+    }
+
+    function normalizeWindow(windowData = {}) {
+      return {
+        label: String(windowData.label ?? "--"),
+        pct: clampPercent(windowData.pct),
+        reset: String(windowData.reset ?? "--")
+      };
+    }
+
+    function clampPercent(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return 0;
+      return Math.max(0, Math.min(100, Math.round(number)));
+    }
+
+    function renderQuota(quota) {
+      const viewModel = {
+        footer: quota.footer,
+        claude: quota.platforms.claude,
+        codex: quota.platforms.codex
+      };
+
+      document.querySelectorAll("[data-field]").forEach((node) => {
+        const value = getPath(viewModel, node.dataset.field);
+        const text = String(value ?? "--");
+        if (node.textContent !== text) node.textContent = text;
+      });
+
+      document.querySelectorAll("[data-bar]").forEach((node) => {
+        const value = clampPercent(getPath(viewModel, node.dataset.bar));
+        const pct = `${value}%`;
+        if (node.style.getPropertyValue("--pct") !== pct) node.style.setProperty("--pct", pct);
+      });
+    }
+
+    async function loadQuota({ sync = false, quiet = false } = {}) {
+      const response = await fetch(`${API_URL}?t=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(`server ${response.status}`);
+      const nextQuota = normalizeQuota(await response.json());
+      const nextHash = JSON.stringify(nextQuota);
+      const changed = nextHash !== state.quotaHash;
+      state.quota = nextQuota;
+      if (changed) {
+        state.quotaHash = nextHash;
+        renderQuota(state.quota);
+        statusEl.textContent = `server updated ${state.quota.updatedAt || "now"}`;
+        logDebug("server quota loaded", { updatedAt: state.quota.updatedAt });
+      } else if (!quiet) {
+        statusEl.textContent = `server unchanged ${state.quota.updatedAt || "now"}`;
+      }
+      if (sync && state.connected && changed) await sendQuota();
+    }
+
+    function compactForDevice(quota) {
+      return {
+        u: quota.updatedAt,
+        f: {
+          c: quota.footer.cost,
+          k: quota.footer.tokens,
+          t: quota.footer.time
+        },
+        p: {
+          c: compactPlatform(quota.platforms.claude),
+          x: compactPlatform(quota.platforms.codex)
+        }
+      };
+    }
+
+    function compactPlatform(platform) {
+      return {
+        r: platform.remaining,
+        s: { l: platform.short.label, p: platform.short.pct, z: platform.short.reset },
+        w: { l: platform.week.label, p: platform.week.pct, z: platform.week.reset }
+      };
+    }
+
+    function logBluetoothDiagnostics() {
+      logDebug("bluetooth diagnostics", {
+        hasBluetooth: !!navigator.bluetooth,
+        isSecureContext,
+        protocol: location.protocol,
+        host: location.host,
+        userActivationActive: navigator.userActivation?.isActive ?? "unknown",
+        userActivationSeen: navigator.userActivation?.hasBeenActive ?? "unknown",
+        userAgent: navigator.userAgent
+      });
+    }
+
+    async function connectWio({ acceptAll = false } = {}) {
+      if (!navigator.bluetooth) {
+        statusEl.textContent = "Web Bluetooth not available";
+        logDebug("navigator.bluetooth unavailable");
+        return;
+      }
+
+      statusEl.textContent = "select Wio Terminal";
+      logBluetoothDiagnostics();
+      logDebug("requestDevice start", { service: SERVICE_UUID, acceptAll });
+      const requestOptions = acceptAll
+        ? { acceptAllDevices: true, optionalServices: [SERVICE_UUID] }
+        : { filters: [{ namePrefix: "Wio AI Quota" }], optionalServices: [SERVICE_UUID] };
+      const device = await navigator.bluetooth.requestDevice(requestOptions);
+      state.device = device;
+      logDebug("device selected", { name: device.name, id: device.id });
+      device.addEventListener("gattserverdisconnected", () => {
+        state.connected = false;
+        state.characteristic = null;
+        state.txCharacteristic = null;
+        syncButton.disabled = true;
+        statusEl.textContent = "bluetooth disconnected";
+        logDebug("gatt disconnected");
+      });
+
+      logDebug("gatt connect start");
+      const server = await device.gatt.connect();
+      logDebug("gatt connected");
+      logDebug("getPrimaryService start");
+      const service = await server.getPrimaryService(SERVICE_UUID);
+      logDebug("service found");
+      state.characteristic = await service.getCharacteristic(RX_UUID);
+      logDebug("rx characteristic found");
+      try {
+        state.txCharacteristic = await service.getCharacteristic(TX_UUID);
+        await state.txCharacteristic.startNotifications();
+        state.txCharacteristic.addEventListener("characteristicvaluechanged", (event) => {
+          const text = new TextDecoder().decode(event.target.value.buffer).trim();
+          logDebug("device notify", text);
+        });
+        logDebug("tx notify subscribed");
+      } catch (error) {
+        logDebug("tx notify unavailable", error.message);
+      }
+      state.connected = true;
+      syncButton.disabled = false;
+      statusEl.textContent = "bluetooth connected";
+      if (state.quota) await sendQuota();
+    }
+
+    async function sendQuota() {
+      if (!state.characteristic || !state.quota) return;
+      const payload = `${JSON.stringify(compactForDevice(state.quota))}\n`;
+      const bytes = new TextEncoder().encode(payload);
+      logDebug("send start", { bytes: bytes.length, payload });
+      for (let offset = 0; offset < bytes.length; offset += 120) {
+        const chunk = bytes.slice(offset, offset + 120);
+        try {
+          logDebug("write chunk without response", { offset, bytes: chunk.length });
+          await state.characteristic.writeValueWithoutResponse(chunk);
+        } catch (error) {
+          logDebug("write without response failed, retry with response", error.message);
+          await state.characteristic.writeValue(chunk);
+        }
+      }
+      statusEl.textContent = `synced ${state.quota.updatedAt || "now"}`;
+      logDebug("send complete");
+    }
+
+    connectButton.addEventListener("click", () => {
+      connectWio().catch((error) => {
+        statusEl.textContent = error.message || "bluetooth failed";
+        logDebug("connect failed", { name: error.name, message: error.message });
+      });
+    });
+
+    scanAnyButton.addEventListener("click", () => {
+      connectWio({ acceptAll: true }).catch((error) => {
+        statusEl.textContent = error.message || "scan failed";
+        logDebug("scan any failed", { name: error.name, message: error.message });
+      });
+    });
+
+    diagButton.addEventListener("click", logBluetoothDiagnostics);
+
+    syncButton.addEventListener("click", () => {
+      sendQuota().catch((error) => {
+        statusEl.textContent = error.message || "sync failed";
+        logDebug("sync failed", { name: error.name, message: error.message });
+      });
+    });
+
+    loadQuota().catch((error) => {
+      statusEl.textContent = error.message || "server failed";
+      logDebug("server load failed", error.message);
+    });
+    setInterval(() => {
+      loadQuota({ sync: true, quiet: true }).catch((error) => {
+        statusEl.textContent = error.message || "server failed";
+        logDebug("server interval failed", error.message);
+      });
+    }, 5000);
+  </script>
+</body>
+</html>
